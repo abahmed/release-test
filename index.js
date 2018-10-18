@@ -15,11 +15,15 @@ var NightlyRelease = {
     assets: [],
     dir: null
   },
+
+  // Initialize NightlyRelease.
   init(config) {
     this.config = config
     this.authenticate()
     this.getRelease()
   },
+
+  // Authenticating user token.
   authenticate () {
     console.log('Authenticating...')
     octokit.authenticate({
@@ -27,6 +31,9 @@ var NightlyRelease = {
       token: process.env.GH_TOKEN
     })
   },
+
+  // Tries to check whether release is existing or not.
+  // If it exists, delete it. Otherwise create new one.
   getRelease() {
     console.log('Getting relesae info...')
     octokit.repos.getReleaseByTag({
@@ -35,12 +42,14 @@ var NightlyRelease = {
       tag: this.config.tag
     }).then(result => {
       // Release is already created.
+      console.log(this.config.tag + ' is existing, so it will be deleted')
+      this.release = result.data
       this.deleteRelease(result.data.id)
     }).catch(e => {
       console.log('Unable to get release info...')
       if (e.code === 404) {
         // Create the release as it does not exist.
-        this.createRelease()
+        this.createRelease('nightly builds', 'nightly builds')
       }
       else {
         throw('Unhandled response for getReleaseByTag: ' + e)
@@ -48,6 +57,8 @@ var NightlyRelease = {
 
     })
   },
+
+  // Deletes release with releaseId, then creates new one.
   deleteRelease(releaseId) {
     console.log('Deleting release...')
     octokit.repos.deleteRelease({
@@ -56,20 +67,30 @@ var NightlyRelease = {
       release_id: releaseId
     }).then(result => {
       console.log('Release is deleted successfully...')
-      this.createRelease()
+      // Use previous name and body.
+      let name = this.release.name
+      let body = this.release.body
+
+      // Free release object.
+      this.release = null
+
+      this.createRelease(name, body)
     }).catch(e => {
       throw('Unhandled response for deleteRelease: ' + e)
     })
   },
-  createRelease() {
+
+  // Creates release with name and body using provided configs, then it calls
+  // uploadAllAssets.
+  createRelease(name, body) {
     console.log('Creating a new release...')
     octokit.repos.createRelease({
       owner: this.config.owner,
       repo: this.config.repo,
       tag_name: this.config.tag,
-      name: 'nightly builds',
-      body: 'nightly builds',
-      target_commitish: process.env.TRAVIS_COMMIT,
+      name: name,
+      body: body,
+      target_commitish: this.config.branch,
       draft: false,
       prerelease: true
     }).then(result => {
@@ -81,6 +102,9 @@ var NightlyRelease = {
       throw('Unhandled response for createRelease: ' + e)
     })
   },
+
+  // Gets a list for assets of a release to avoid conflicts while uploading
+  // new assets by deleting them, then it calls uploadAllAssets.
   getAssets(releaseId) {
     console.log('Getting assets...')
     octokit.repos.getAssets({
@@ -98,6 +122,9 @@ var NightlyRelease = {
       throw('Unhandled response for getAssets: ' + e)
     })
   },
+
+  // Makes sure of asstes that will be uploaded and calls uploadAsset for
+  // uploading them.
   uploadAllAssets() {
     this.filteredAssets = this.config.assets.filter(asset => {
       let assetUrl = path.join(this.config.dir, asset)
@@ -109,6 +136,9 @@ var NightlyRelease = {
     }
     this.uploadAsset(0)
   },
+
+  // Uploads asset for a release if it's not already uploaded, Otherwise
+  // calls deleteAsset.
   uploadAsset(assetIndex) {
     if (assetIndex >= this.filteredAssets.length) {
       console.log('Assets uploaded successfully...')
@@ -141,6 +171,9 @@ var NightlyRelease = {
       throw('Unhandled response for uploadAsset: ' + e)
     })
   },
+
+  // Deletes old asset with assetId, then it calls uploadAsset to upload new
+  // one.
   deleteAsset(assetId, assetIndex) {
     console.log('Deleting ' + this.filteredAssets[assetIndex])
     octokit.repos.deleteAsset({
@@ -155,6 +188,8 @@ var NightlyRelease = {
       throw('Unhandled response for deleteAsset: ' + e)
     })
   },
+
+  // Returns id for asset to be used in deleting it.
   getAssetId(index) {
     let newAsset = this.filteredAssets[index]
     let result = this.uploadedAssets.find(asset => asset.name === newAsset)
@@ -163,6 +198,8 @@ var NightlyRelease = {
     }
     return -1
   },
+
+  // Removes asset from uploadedAssets list.
   deleteAssetId(assetId) {
     this.uploadedAssets =
       this.uploadedAssets.filter(asset => asset.id !== assetId)
