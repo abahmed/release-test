@@ -1,6 +1,7 @@
 const octokit = require('@octokit/rest')()
 const fs = require('fs')
 const mime = require('mime')
+const path = require('path')
 
 var NightlyRelease = {
   release: {},
@@ -11,7 +12,8 @@ var NightlyRelease = {
     repo: null,
     branch: null,
     tag: null,
-    assets: []
+    assets: [],
+    dir: null
   },
   init(config) {
     this.config = config
@@ -32,9 +34,8 @@ var NightlyRelease = {
       repo: this.config.repo,
       tag: this.config.tag
     }).then(result => {
-      this.release = result.data
       // Release is already created.
-      this.getAssets(result.data.id)
+      this.deleteRelease(result.data.id)
     }).catch(e => {
       console.log('Unable to get release info...')
       if (e.code === 404) {
@@ -47,6 +48,19 @@ var NightlyRelease = {
 
     })
   },
+  deleteRelease(releaseId) {
+    console.log('Deleting release...')
+    octokit.repos.deleteRelease({
+      owner: this.config.owner,
+      repo: this.config.repo,
+      release_id: releaseId
+    }).then(result => {
+      console.log('Release is deleted successfully...')
+      this.createRelease()
+    }).catch(e => {
+      throw('Unhandled response for deleteRelease: ' + e)
+    })
+  },
   createRelease() {
     console.log('Creating a new release...')
     octokit.repos.createRelease({
@@ -55,11 +69,14 @@ var NightlyRelease = {
       tag_name: this.config.tag,
       name: 'nightly builds',
       body: 'nightly builds',
-      target_commitish: this.config.branch,
+      target_commitish: process.env.TRAVIS_COMMIT,
       draft: false,
-      prerelease:true
+      prerelease: true
     }).then(result => {
       console.log('Release is created successfully...')
+      this.release = result.data
+      this.uploadedAssets = []
+      this.uploadAllAssets()
     }).catch(e => {
       throw('Unhandled response for createRelease: ' + e)
     })
@@ -75,19 +92,28 @@ var NightlyRelease = {
       this.uploadedAssets = result.data.map(asset => {
         return { name: asset.name, id: asset.id }
       })
-      this.filteredAssets =
-        this.config.assets.filter(asset => fs.existsSync(asset))
-      if (this.filteredAssets.length === 0) {
-        return
-      }
-      this.uploadAsset(0)
+
+      this.uploadAllAssets()
     }).catch(function(e) {
       throw('Unhandled response for getAssets: ' + e)
     })
   },
-  uploadAsset(assetIndex) {
-    if (assetIndex >= this.filteredAssets.length)
+  uploadAllAssets() {
+    this.filteredAssets = this.config.assets.filter(asset => {
+      let assetUrl = path.join(this.config.dir, asset)
+      return fs.existsSync(assetUrl)
+    })
+    if (this.filteredAssets.length === 0) {
+      console.log('There are no assets to upload...')
       return
+    }
+    this.uploadAsset(0)
+  },
+  uploadAsset(assetIndex) {
+    if (assetIndex >= this.filteredAssets.length) {
+      console.log('Assets uploaded successfully...')
+      return
+    }
 
     let asset = this.filteredAssets[assetIndex]
     console.log('Uploading ' + asset)
@@ -101,12 +127,12 @@ var NightlyRelease = {
       return
     }
 
-
+    let assetUrl = path.join(this.config.dir, asset)
     octokit.repos.uploadAsset({
       url: this.release.upload_url,
-      file: fs.readFileSync(asset),
-      contentType: mime.getType(asset),
-      contentLength: fs.statSync(asset).size,
+      file: fs.readFileSync(assetUrl),
+      contentType: mime.getType(assetUrl),
+      contentLength: fs.statSync(assetUrl).size,
       name: asset,
     }).then(result => {
       console.log('Uploaded successfully...')
@@ -148,5 +174,6 @@ NightlyRelease.init({
   repo: 'release-test',
   branch: 'master',
   tag: 'nightly',
-  assets: ['dist.txt']
+  assets: ['dist.txt'],
+  dir:'./dist'
 })
