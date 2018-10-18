@@ -35,6 +35,7 @@ var NightlyRelease = {
       tag: this.config.tag
     }).then(result => {
       // Release is already created.
+      console.log(this.config.tag + ' is existing, so it will be deleted')
       this.deleteRelease(result.data.id)
     }).catch(e => {
       console.log('Unable to get release info...')
