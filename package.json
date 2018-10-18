@@ -1,0 +1,15 @@
+{
+  "name": "release-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "node index.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^15.13.1",
+    "mime": "^2.3.1"
+  }
+}
