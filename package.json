@@ -10,6 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "@octokit/rest": "^15.13.1",
+    "glob-fs": "^0.1.7",
     "mime": "^2.3.1"
   }
 }

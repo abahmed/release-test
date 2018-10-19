@@ -1,9 +1,12 @@
 language: node_js
 node_js:
 - '8'
-install:
-- npm install
+os:
+- windows
+- osx
+- linux
 script:
-- npm run deploy
-env:
-  secure: tN+U338ZerInBIJXX7ru3ZQFD6WWAoJpJekk+rp/CPFLRKrL99r2hGDhj+xxNLejZV2NBLuiSGSWM4uTGxAzvK6DxQPbaRsGPEKUfZSV7HR2VJGFqYQ6I3BG4HB/8DGYqU6VYHymCdk39isw89wz7TEbXkKZpjd9tT1vAJc9P9ySRcA/DADSQRrLW3aK+cJEXocSCdtkIiR7yz6N+f2ssrenyOs59sCZ1Kr97y+zID3JAMGxbIo4+a3Exr+lSl13tAkWEviGrgWTjryWhBWpF5rMzS1KiL4/3LV1Y4MuRf271WA2i12EzKDo2GykA6N9NXAEiSKMldXuYq2oBDT53eE+weK8CLSfr7IrSR6MHG2oE2X9x5/v4qyraf5cwqAUjNkfIY3JQ3AQImDqCY1Ks6wTHMM7aFoDeLAJyfWAr/6FGenZxGsg1pxCAjNvF/OFh+cXtyd6KsM5CUAA3p+7M/ZGqDk9D5ZimdPKNNNGfFXKV6IhNd1ceWmTwCyY/DwZQP/rgt9wL6pTy+Vqv49rMNaQD67ieb7R5qa4+g5oJ/hQYlaVeSVtZ3JEBaNVGSMZh1ZJrgr7Fl3e7JvEl1BZ2O7aEvbsxzEdUsiMqAV8P8i6FeK9mZHUkgb1EuE6vaK1eiB3PVa/tFswT/WmaF0e2ax3/eN5yL01d3OBTIfAW20=
+- bash post-commit.sh
+cache:
+  directories:
+  - node_modules
